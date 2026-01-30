@@ -1,2 +1,2 @@
 # thewindsorcasino
-Thw Windsor Casino
+The Windsor Casino
