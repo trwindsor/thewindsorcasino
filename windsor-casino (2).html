@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Windsor Casino</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.5s ease;
+            overflow-x: hidden;
+        }
+        .room-easy {
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            --accent: #888; --accent-glow: rgba(136, 136, 136, 0.5);
+            --text: #ccc; --reel-bg: #222; --reel-border: #444;
+        }
+        .room-steady {
+            background: linear-gradient(135deg, #0d0d1a 0%, #1a1a2e 100%);
+            --accent: #00d4ff; --accent-glow: rgba(0, 212, 255, 0.5);
+            --text: #e0e0e0; --reel-bg: #12121f; --reel-border: #00d4ff;
+        }
+        .room-heavy {
+            background: linear-gradient(135deg, #0a0a15 0%, #150520 100%);
+            --accent: #ff00ff; --accent-glow: rgba(255, 0, 255, 0.5);
+            --text: #f0e0ff; --reel-bg: #0f0a18; --reel-border: #ff00ff;
+        }
+        .room-highroller {
+            background: linear-gradient(135deg, #0f0f0f 0%, #1a0a00 100%);
+            --accent: #ffd700; --accent-glow: rgba(255, 215, 0, 0.6);
+            --text: #fff5e0; --reel-bg: #1a1408; --reel-border: #ffd700;
+        }
+        .container { text-align: center; padding: 20px; max-width: 650px; width: 100%; }
+        
+        .header {
+            position: relative;
+            margin-bottom: 15px;
+        }
+        
+        h1 {
+            color: var(--accent); font-size: 1.6rem; margin-bottom: 5px;
+            text-shadow: 0 0 20px var(--accent-glow); letter-spacing: 3px;
+        }
+        .room-name { color: var(--text); font-size: 0.85rem; opacity: 0.7; margin-bottom: 10px; }
+        
+        .balance {
+            color: var(--text); font-size: 1.5rem; margin-bottom: 15px;
+        }
+        .balance span { color: var(--accent); font-weight: bold; text-shadow: 0 0 10px var(--accent-glow); }
+        .balance-add {
+            display: inline-block; color: #4f4; font-size: 1rem; font-weight: bold;
+            opacity: 0; margin-left: 10px;
+        }
+        .balance-add.show { animation: float-up 1s ease-out forwards; }
+        @keyframes float-up { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-30px); } }
+        
+        /* Hamburger Menu */
+        .menu-container {
+            position: absolute;
+            top: 0;
+            right: 0;
+        }
+        .hamburger {
+            width: 30px; height: 24px; cursor: pointer; display: flex;
+            flex-direction: column; justify-content: space-between; padding: 3px 0;
+        }
+        .hamburger span {
+            display: block; height: 3px; width: 100%; background: var(--accent);
+            border-radius: 2px; transition: all 0.3s;
+        }
+        .hamburger:hover span { background: var(--text); box-shadow: 0 0 8px var(--accent-glow); }
+        .dropdown-menu {
+            position: absolute; top: 35px; right: 0; background: #1a1a1a;
+            border: 1px solid var(--accent); border-radius: 8px; min-width: 150px;
+            opacity: 0; visibility: hidden; transform: translateY(-10px);
+            transition: all 0.3s; z-index: 200; overflow: hidden;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.5);
+        }
+        .dropdown-menu.open { opacity: 1; visibility: visible; transform: translateY(0); }
+        .dropdown-menu button {
+            display: block; width: 100%; padding: 12px 20px; background: none;
+            border: none; color: var(--text); font-size: 0.9rem; cursor: pointer;
+            text-align: left; transition: all 0.2s;
+        }
+        .dropdown-menu button:hover { background: var(--accent); color: #000; }
+        .dropdown-menu button:not(:last-child) { border-bottom: 1px solid #333; }
+
+        .slot-machine {
+            background: var(--reel-bg); border: 2px solid var(--reel-border); border-radius: 15px;
+            padding: 20px; margin-bottom: 15px; box-shadow: 0 0 30px var(--accent-glow), inset 0 0 20px rgba(0,0,0,0.5);
+        }
+        .reels-container { display: flex; justify-content: center; gap: 10px; margin-bottom: 15px; }
+        .reel {
+            width: 80px; height: 180px; background: #111; border-radius: 8px;
+            overflow: hidden; position: relative; border: 1px solid var(--reel-border);
+        }
+        .reel-inner { position: absolute; width: 100%; transition: transform 0.1s ease-out; }
+        .symbol { width: 80px; height: 60px; display: flex; align-items: center; justify-content: center; font-size: 2rem; color: var(--text); }
+        .paylines-indicator { color: var(--text); font-size: 0.75rem; opacity: 0.6; margin-top: 10px; }
+        .payline-highlight {
+            position: absolute; left: 0; right: 0; height: 60px;
+            pointer-events: none; opacity: 0; transition: opacity 0.3s;
+        }
+        .payline-highlight.active {
+            opacity: 1; background: linear-gradient(90deg, transparent, var(--accent-glow), transparent);
+            animation: payline-flash 0.5s ease-in-out 3;
+        }
+        @keyframes payline-flash { 0%, 100% { opacity: 0.3; } 50% { opacity: 0.8; } }
+        .controls { display: flex; align-items: center; justify-content: center; gap: 25px; margin-bottom: 15px; }
+        .bet-control { display: flex; flex-direction: column; align-items: center; gap: 8px; color: var(--text); }
+        .bet-label { font-size: 0.8rem; opacity: 0.7; }
+        .bet-quick-buttons { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+        .bet-quick-btn {
+            padding: 8px 14px; border: 1px solid var(--accent); background: transparent;
+            color: var(--accent); border-radius: 4px; cursor: pointer; font-size: 0.85rem; transition: all 0.2s;
+        }
+        .bet-quick-btn:hover, .bet-quick-btn.active { background: var(--accent); color: #000; box-shadow: 0 0 10px var(--accent-glow); }
+        .bet-input-row { display: flex; align-items: center; gap: 8px; margin-top: 5px; }
+        .bet-input-row label { font-size: 0.8rem; opacity: 0.7; }
+        .bet-control input {
+            width: 90px; text-align: center; background: transparent; border: 1px solid var(--accent);
+            color: var(--accent); padding: 8px; border-radius: 5px; font-size: 0.9rem;
+        }
+        .bet-control input:focus { outline: none; box-shadow: 0 0 10px var(--accent-glow); }
+        .lever-container { position: relative; display: inline-block; }
+        .lever {
+            width: 60px; height: 120px; background: linear-gradient(180deg, #444 0%, #222 100%);
+            border-radius: 10px; position: relative; cursor: pointer; border: 2px solid #555; transition: transform 0.1s;
+        }
+        .lever:hover { transform: scale(1.05); }
+        .lever:active { transform: scale(0.98); }
+        .lever-handle {
+            width: 40px; height: 40px; background: linear-gradient(135deg, #ff4444 0%, #cc0000 100%);
+            border-radius: 50%; position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+            box-shadow: 0 4px 15px rgba(255, 0, 0, 0.5), inset 0 -3px 10px rgba(0,0,0,0.3); transition: all 0.2s;
+        }
+        .lever.pulled .lever-handle { top: 70px; box-shadow: 0 2px 10px rgba(255, 0, 0, 0.3), inset 0 -3px 10px rgba(0,0,0,0.3); }
+        .lever-track { width: 8px; height: 80px; background: #333; border-radius: 4px; position: absolute; top: 20px; left: 50%; transform: translateX(-50%); }
+        .room-selector { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-bottom: 15px; }
+        .room-btn {
+            padding: 8px 12px; border: 1px solid var(--accent); background: transparent;
+            color: var(--text); border-radius: 20px; cursor: pointer; font-size: 0.8rem; transition: all 0.3s;
+        }
+        .room-btn:hover, .room-btn.active { background: var(--accent); color: #000; box-shadow: 0 0 20px var(--accent-glow); }
+        .message { color: var(--accent); font-size: 1.2rem; min-height: 30px; margin-bottom: 10px; text-shadow: 0 0 10px var(--accent-glow); transition: all 0.3s; }
+        .message.big-win { font-size: 1.6rem; animation: big-win-pulse 0.5s ease-in-out 3; }
+        .message.jackpot { font-size: 2rem; animation: jackpot-pulse 0.3s ease-in-out 6; }
+        @keyframes big-win-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.2); } }
+        @keyframes jackpot-pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.4); opacity: 0.8; } }
+        .hint { color: var(--text); opacity: 0.4; font-size: 0.7rem; margin-top: 5px; }
+        .overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.95);
+            display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+            z-index: 100; opacity: 0; pointer-events: none; transition: opacity 0.3s; overflow-y: auto; padding: 40px 20px;
+        }
+        .overlay.active { opacity: 1; pointer-events: all; }
+        .overlay-content { max-width: 500px; width: 100%; }
+        .overlay h2 { color: var(--accent, #ffd700); font-size: 2rem; margin-bottom: 20px; text-shadow: 0 0 20px var(--accent-glow, rgba(255, 215, 0, 0.6)); }
+        .overlay p { color: #888; margin-bottom: 20px; font-size: 1rem; }
+        .close-btn { position: absolute; top: 20px; right: 30px; background: none; border: none; color: #666; font-size: 2rem; cursor: pointer; transition: color 0.3s; }
+        .close-btn:hover { color: #fff; }
+        .restart-btn {
+            padding: 12px 30px; font-size: 1rem; background: linear-gradient(135deg, #ff4444 0%, #cc0000 100%);
+            border: none; color: white; border-radius: 25px; cursor: pointer; transition: all 0.3s; box-shadow: 0 0 20px rgba(255, 68, 68, 0.5);
+        }
+        .restart-btn:hover { transform: scale(1.05); box-shadow: 0 0 30px rgba(255, 68, 68, 0.8); }
+        .shop-categories { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-bottom: 20px; }
+        .category-btn {
+            padding: 8px 15px; background: transparent; border: 1px solid #444; color: #888;
+            border-radius: 20px; cursor: pointer; font-size: 0.85rem; transition: all 0.3s;
+        }
+        .category-btn:hover, .category-btn.active { border-color: #ffd700; color: #ffd700; box-shadow: 0 0 15px rgba(255, 215, 0, 0.3); }
+        .shop-items { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 15px; margin-top: 20px; }
+        .shop-item {
+            background: #1a1a1a; border: 1px solid #333; border-radius: 10px; padding: 15px;
+            text-align: center; transition: all 0.3s; cursor: pointer;
+        }
+        .shop-item:hover { border-color: #ffd700; transform: translateY(-3px); box-shadow: 0 5px 20px rgba(255, 215, 0, 0.2); }
+        .shop-item.unique-owned { border-color: #4f4; opacity: 0.7; cursor: default; }
+        .shop-item-icon { font-size: 2.5rem; margin-bottom: 10px; }
+        .shop-item-name { color: #ccc; font-size: 0.85rem; margin-bottom: 5px; }
+        .shop-item-price { color: #ffd700; font-size: 0.9rem; font-weight: bold; }
+        .shop-item.unique-owned .shop-item-price { color: #4f4; }
+        .shop-item-owned { color: #4f4; font-size: 0.75rem; margin-top: 5px; }
+        .collection-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 15px; margin-top: 20px; }
+        .collection-item { background: #1a1a1a; border: 1px solid #4f4; border-radius: 10px; padding: 15px; text-align: center; }
+        .collection-item-icon { font-size: 2rem; margin-bottom: 8px; }
+        .collection-item-name { color: #888; font-size: 0.75rem; }
+        .collection-item-count { color: #4f4; font-size: 0.7rem; margin-top: 3px; }
+        .empty-collection { color: #555; font-style: italic; padding: 40px; }
+        .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-top: 20px; }
+        .stat-card { background: #1a1a1a; border: 1px solid #333; border-radius: 10px; padding: 20px; text-align: center; }
+        .stat-value { color: #ffd700; font-size: 1.8rem; font-weight: bold; text-shadow: 0 0 10px rgba(255, 215, 0, 0.5); }
+        .stat-label { color: #666; font-size: 0.8rem; margin-top: 5px; }
+        .odds-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        .odds-table th, .odds-table td { padding: 12px; text-align: left; border-bottom: 1px solid #333; }
+        .odds-table th { color: #ffd700; font-size: 0.85rem; }
+        .odds-table td { color: #ccc; font-size: 0.9rem; }
+        .odds-table tr:hover { background: rgba(255,215,0,0.05); }
+        .odds-highlight { color: #4f4; font-weight: bold; }
+        @keyframes spin { 0% { transform: translateY(0); } 100% { transform: translateY(-60px); } }
+        .reel-inner.spinning { animation: spin 0.08s linear infinite; }
+        .particles { position: fixed; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; z-index: 50; }
+        .particle { position: absolute; width: 10px; height: 10px; border-radius: 50%; animation: particle-fall 2s ease-out forwards; }
+        @keyframes particle-fall { 0% { transform: translateY(0) rotate(0deg); opacity: 1; } 100% { transform: translateY(100vh) rotate(720deg); opacity: 0; } }
+        .reset-btn {
+            position: fixed; bottom: 20px; right: 20px; padding: 8px 15px; background: transparent;
+            border: 1px solid #333; color: #555; border-radius: 5px; cursor: pointer; font-size: 0.7rem; transition: all 0.3s;
+        }
+        .reset-btn:hover { border-color: #ff4444; color: #ff4444; }
+    </style>
+</head>
+<body class="room-easy">
+    <div class="container">
+        <div class="header">
+            <h1>THE WINDSOR CASINO</h1>
+            <div class="room-name" id="roomName">Easy Peasy</div>
+            <div class="menu-container">
+                <div class="hamburger" id="hamburger">
+                    <span></span><span></span><span></span>
+                </div>
+                <div class="dropdown-menu" id="dropdownMenu">
+                    <button id="shopBtn">🛒 Shop</button>
+                    <button id="collectionBtn">🏆 Collection</button>
+                    <button id="statsBtn">📊 Statistics</button>
+                    <button id="oddsBtn">🎲 Odds</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="balance">Balance: <span id="balance">100</span><span class="balance-add" id="balanceAdd">+10</span></div>
+
+        <div class="room-selector">
+            <button class="room-btn active" data-room="easy">Easy Peasy</button>
+            <button class="room-btn" data-room="steady">Steady on now...</button>
+            <button class="room-btn" data-room="heavy">Heavy Hitta</button>
+            <button class="room-btn" data-room="highroller">High Roller</button>
+        </div>
+
+        <div class="slot-machine">
+            <div class="reels-container" id="reelsContainer">
+                <div class="reel"><div class="reel-inner" id="reel1"></div><div class="payline-highlight" style="top: 0;" data-line="0"></div><div class="payline-highlight" style="top: 60px;" data-line="1"></div><div class="payline-highlight" style="top: 120px;" data-line="2"></div></div>
+                <div class="reel"><div class="reel-inner" id="reel2"></div><div class="payline-highlight" style="top: 0;" data-line="0"></div><div class="payline-highlight" style="top: 60px;" data-line="1"></div><div class="payline-highlight" style="top: 120px;" data-line="2"></div></div>
+                <div class="reel"><div class="reel-inner" id="reel3"></div><div class="payline-highlight" style="top: 0;" data-line="0"></div><div class="payline-highlight" style="top: 60px;" data-line="1"></div><div class="payline-highlight" style="top: 120px;" data-line="2"></div></div>
+            </div>
+            <div class="paylines-indicator" id="paylinesIndicator">1 Payline (Middle)</div>
+        </div>
+
+        <div class="message" id="message"></div>
+
+        <div class="controls">
+            <div class="bet-control">
+                <div class="bet-label">BET AMOUNT</div>
+                <div class="bet-quick-buttons" id="betButtons"></div>
+                <div class="bet-input-row" id="customBetRow" style="display: none;">
+                    <label>Custom:</label>
+                    <input type="number" id="betAmount" value="1" min="1">
+                </div>
+            </div>
+            <div class="lever-container"><div class="lever" id="lever"><div class="lever-track"></div><div class="lever-handle"></div></div></div>
+        </div>
+
+        <div class="hint">SPACE to spin • Double-tap to skip</div>
+    </div>
+
+    <div class="overlay" id="gameOverOverlay"><div class="overlay-content" style="text-align: center; margin-top: 100px;"><h2 style="color: #ff4444;">BANKRUPT!</h2><p>You've run out of trav bucks...</p><button class="restart-btn" id="restartBtn">Try Again</button></div></div>
+    <div class="overlay" id="shopOverlay"><button class="close-btn" onclick="closeOverlay('shopOverlay')">×</button><div class="overlay-content"><h2>🛒 Shop</h2><div class="shop-categories"><button class="category-btn active" data-category="all">All</button><button class="category-btn" data-category="trinkets">Trinkets</button><button class="category-btn" data-category="accessories">Accessories</button><button class="category-btn" data-category="vehicles">Vehicles</button><button class="category-btn" data-category="property">Property</button><button class="category-btn" data-category="power">Power Moves</button></div><div class="shop-items" id="shopItems"></div></div></div>
+    <div class="overlay" id="purchaseModal"><div class="overlay-content" style="text-align: center; margin-top: 80px;"><h2 id="purchaseTitle">Purchase Item</h2><div id="purchaseIcon" style="font-size: 4rem; margin: 20px 0;"></div><p id="purchaseDesc"></p><p id="purchasePrice" style="color: #ffd700; font-size: 1.3rem; font-weight: bold;"></p><p id="purchaseOwned" style="color: #4f4; font-size: 0.9rem;"></p><div style="margin-top: 30px; display: flex; gap: 15px; justify-content: center;"><button class="restart-btn" id="confirmPurchaseBtn" style="background: linear-gradient(135deg, #4f4 0%, #2a2 100%); box-shadow: 0 0 20px rgba(68, 255, 68, 0.5);">Buy Now</button><button class="restart-btn" id="cancelPurchaseBtn" style="background: linear-gradient(135deg, #666 0%, #444 100%); box-shadow: 0 0 20px rgba(100, 100, 100, 0.5);">Cancel</button></div></div></div>
+    <div class="overlay" id="collectionOverlay"><button class="close-btn" onclick="closeOverlay('collectionOverlay')">×</button><div class="overlay-content"><h2>🏆 Collection</h2><p id="collectionCount">0 items collected</p><div class="collection-grid" id="collectionGrid"></div></div></div>
+    <div class="overlay" id="statsOverlay"><button class="close-btn" onclick="closeOverlay('statsOverlay')">×</button><div class="overlay-content"><h2>📊 Statistics</h2><div class="stats-grid" id="statsGrid"></div></div></div>
+    <div class="overlay" id="oddsOverlay"><button class="close-btn" onclick="closeOverlay('oddsOverlay')">×</button><div class="overlay-content"><h2>🎲 Odds & Payouts</h2><p style="color:#888; margin-bottom:20px;">Current Room: <span id="oddsRoomName" style="color:var(--accent)"></span></p><div id="oddsContent"></div></div></div>
+    <div class="overlay" id="resetModal"><div class="overlay-content" style="text-align: center; margin-top: 100px;"><h2 style="color: #ff4444;">⚠️ Reset Everything?</h2><p style="color:#888; margin: 20px 0;">This will permanently delete:</p><ul style="color:#aaa; text-align:left; max-width:250px; margin:0 auto 20px; line-height:1.8;">• Your balance (back to 100)<br>• All collected items<br>• All statistics<br>• All progress</ul><p style="color:#f66; font-weight:bold; margin-bottom:30px;">This cannot be undone!</p><div style="display: flex; gap: 15px; justify-content: center;"><button class="restart-btn" id="confirmResetBtn">Yes, Reset Everything</button><button class="restart-btn" id="cancelResetBtn" style="background: linear-gradient(135deg, #666 0%, #444 100%); box-shadow: 0 0 20px rgba(100, 100, 100, 0.5);">Cancel</button></div></div></div>
+    <div class="particles" id="particles"></div>
+    <button class="reset-btn" id="resetBtn">Reset All</button>
+
+    <script>
+        let audioCtx = null;
+        function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+        function playTone(freq, dur, type = 'sine', vol = 0.2) {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+            osc.type = type; osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.start(); osc.stop(audioCtx.currentTime + dur);
+        }
+        function playSound(type) {
+            if (!audioCtx) return;
+            switch(type) {
+                case 'lever': playTone(150, 0.05, 'square', 0.15); setTimeout(() => playTone(100, 0.03, 'square', 0.1), 50); break;
+                case 'spin': playTone(800 + Math.random() * 400, 0.02, 'sine', 0.08); break;
+                case 'stop': playTone(200, 0.08, 'sine', 0.2); playTone(150, 0.1, 'triangle', 0.15); break;
+                case 'win': playTone(523, 0.1, 'sine', 0.2); setTimeout(() => playTone(659, 0.1, 'sine', 0.2), 100); setTimeout(() => playTone(784, 0.15, 'sine', 0.25), 200); break;
+                case 'bigwin': [523, 587, 659, 698, 784, 880, 988, 1047].forEach((f, i) => setTimeout(() => playTone(f, 0.12, 'sine', 0.2), i * 80)); break;
+                case 'jackpot': [523, 523, 784, 784, 880, 880, 784, 0, 698, 698, 659, 659, 587, 587, 523].forEach((f, i) => { if (f > 0) setTimeout(() => playTone(f, 0.15, 'sine', 0.25), i * 100); }); break;
+                case 'coin': playTone(1200, 0.05, 'sine', 0.15); setTimeout(() => playTone(1500, 0.05, 'sine', 0.15), 50); setTimeout(() => playTone(1800, 0.08, 'sine', 0.2), 100); break;
+                case 'purchase': playTone(440, 0.1, 'sine', 0.2); setTimeout(() => playTone(554, 0.1, 'sine', 0.2), 100); setTimeout(() => playTone(659, 0.15, 'sine', 0.25), 200); break;
+                case 'secret': playTone(880, 0.05, 'sine', 0.15); setTimeout(() => playTone(1100, 0.05, 'sine', 0.15), 60); setTimeout(() => playTone(1320, 0.08, 'sine', 0.2), 120); break;
+            }
+        }
+
+        // Items: unique = can only own one, stackable = can own multiple
+        const shopItems = [
+            { id: 'rubber_ducky', name: 'Rubber Ducky', icon: '🦆', price: 10, category: 'trinkets', stackable: true },
+            { id: 'paperclip', name: 'Fancy Paperclip', icon: '📎', price: 5, category: 'trinkets', stackable: true },
+            { id: 'fidget_spinner', name: 'Fidget Spinner', icon: '🌀', price: 25, category: 'trinkets', stackable: true },
+            { id: 'lucky_coin', name: 'Lucky Coin', icon: '🪙', price: 50, category: 'trinkets', stackable: true },
+            { id: 'dice', name: 'Lucky Dice', icon: '🎲', price: 35, category: 'trinkets', stackable: true },
+            { id: 'crystal_ball', name: 'Crystal Ball', icon: '🔮', price: 75, category: 'trinkets', stackable: true },
+            { id: 'four_leaf', name: 'Four Leaf Clover', icon: '🍀', price: 100, category: 'trinkets', stackable: true },
+            { id: 'sunglasses', name: 'Cool Shades', icon: '🕶️', price: 150, category: 'accessories', stackable: true },
+            { id: 'watch', name: 'Wristwatch', icon: '⌚', price: 300, category: 'accessories', stackable: true },
+            { id: 'gold_chain', name: 'Gold Chain', icon: '📿', price: 500, category: 'accessories', stackable: true },
+            { id: 'top_hat', name: 'Top Hat', icon: '🎩', price: 750, category: 'accessories', stackable: true },
+            { id: 'crown', name: 'Crown', icon: '👑', price: 1000, category: 'accessories', stackable: true },
+            { id: 'diamond_ring', name: 'Diamond Ring', icon: '💍', price: 2000, category: 'accessories', stackable: true },
+            { id: 'bicycle', name: 'Bicycle', icon: '🚲', price: 1500, category: 'vehicles', stackable: true },
+            { id: 'motorcycle', name: 'Motorcycle', icon: '🏍️', price: 5000, category: 'vehicles', stackable: true },
+            { id: 'sports_car', name: 'Sports Car', icon: '🏎️', price: 15000, category: 'vehicles', stackable: true },
+            { id: 'helicopter', name: 'Helicopter', icon: '🚁', price: 35000, category: 'vehicles', stackable: true },
+            { id: 'yacht', name: 'Luxury Yacht', icon: '🛥️', price: 75000, category: 'vehicles', stackable: true },
+            { id: 'private_jet', name: 'Private Jet', icon: '✈️', price: 150000, category: 'vehicles', stackable: true },
+            { id: 'rocket', name: 'Space Rocket', icon: '🚀', price: 500000, category: 'vehicles', stackable: true },
+            { id: 'apartment', name: 'City Apartment', icon: '🏢', price: 100000, category: 'property', stackable: true },
+            { id: 'house', name: 'Nice House', icon: '🏠', price: 250000, category: 'property', stackable: true },
+            { id: 'mansion', name: 'Mansion', icon: '🏰', price: 750000, category: 'property', stackable: true },
+            { id: 'skyscraper', name: 'Skyscraper', icon: '🏙️', price: 2000000, category: 'property', stackable: true },
+            { id: 'island', name: 'Private Island', icon: '🏝️', price: 5000000, category: 'property', stackable: true },
+            { id: 'small_country', name: 'Small Country', icon: '🇲🇨', price: 10000000, category: 'power', stackable: false },
+            { id: 'the_moon', name: 'The Moon', icon: '🌙', price: 50000000, category: 'power', stackable: false },
+            { id: 'time_itself', name: 'Concept of Time', icon: '⏳', price: 100000000, category: 'power', stackable: false },
+            { id: 'usa', name: 'The USA', icon: '🇺🇸', price: 500000000, category: 'power', stackable: false },
+            { id: 'earth', name: 'Planet Earth', icon: '🌍', price: 1000000000, category: 'power', stackable: false },
+            { id: 'universe', name: 'The Universe', icon: '🌌', price: 10000000000, category: 'power', stackable: false },
+        ];
+
+        const symbols = {
+            easy: ['7️⃣', '🍒', '🍋', '🔔', '⭐', '💎', '🍀', '🍇', '🍊', '🎪'],
+            steady: ['●', '■', '▲', '◆', '★', '⬡', '⬢', '○', '□', '△'],
+            heavy: ['🚀', '🌟', '🪐', '👽', '🛸', '☄️', '🌌', '🌙', '⭐', '🔭'],
+            highroller: ['👑', '💰', '💎', '🏆', '💵', '🎰', '✨', '💳', '🥇', '💲']
+        };
+
+        const roomConfig = {
+            // With 10 symbols: 3-match = 1% chance, 2-match = 10% chance per line
+            // Easy: 1 payline - roughly 10% win rate (mostly 2-match), small payouts
+            easy: { name: 'Easy Peasy', paylines: 1, betOptions: [1, 2, 5, 10], maxBet: 10, multipliers: { two: [1.1, 1.4], three: [3, 5], jackpot: 20 } },
+            // Steady: 3 paylines - more chances but still tough
+            steady: { name: 'Steady on now...', paylines: 3, betOptions: [1, 5, 10, 25, 50], maxBet: 50, multipliers: { two: [1.2, 1.6], three: [4, 8], jackpot: 35 } },
+            // Heavy: 5 paylines - most chances, bigger multipliers
+            heavy: { name: 'Heavy Hitta', paylines: 5, betOptions: [5, 10, 25, 50, 100], maxBet: 100, multipliers: { two: [1.3, 1.8], three: [6, 12], jackpot: 50 } },
+            // High Roller: 5 paylines, biggest multipliers
+            highroller: { name: 'High Roller Lounge', paylines: 5, betOptions: [10, 50, 100, 500, 1000], maxBet: Infinity, multipliers: { two: [1.5, 2], three: [8, 20], jackpot: 100 } }
+        };
+
+        let state = {
+            balance: 100, currentRoom: 'easy', bet: 1, spinning: false, skipAnimation: false,
+            collection: {}, // Changed to object: { itemId: count }
+            stats: { totalSpins: 0, totalWins: 0, biggestWin: 0, totalWon: 0, totalLost: 0, startTime: Date.now() }
+        };
+
+        function loadState() {
+            const saved = localStorage.getItem('windsorCasino_v1');
+            if (saved) {
+                const p = JSON.parse(saved);
+                state.balance = p.balance ?? 100; state.currentRoom = p.currentRoom ?? 'easy'; state.bet = p.bet ?? 1;
+                state.collection = p.collection ?? {};
+                state.stats = p.stats ?? { totalSpins: 0, totalWins: 0, biggestWin: 0, totalWon: 0, totalLost: 0, startTime: Date.now() };
+            }
+        }
+        function saveState() {
+            localStorage.setItem('windsorCasino_v1', JSON.stringify({
+                balance: state.balance, currentRoom: state.currentRoom, bet: state.bet, collection: state.collection, stats: state.stats
+            }));
+        }
+
+        const balanceEl = document.getElementById('balance'), balanceAddEl = document.getElementById('balanceAdd');
+        const messageEl = document.getElementById('message'), betInput = document.getElementById('betAmount');
+        const lever = document.getElementById('lever'), roomNameEl = document.getElementById('roomName');
+        const gameOverOverlay = document.getElementById('gameOverOverlay'), particlesEl = document.getElementById('particles');
+        const betButtonsEl = document.getElementById('betButtons'), customBetRow = document.getElementById('customBetRow');
+        const hamburger = document.getElementById('hamburger'), dropdownMenu = document.getElementById('dropdownMenu');
+
+        // Hamburger menu
+        hamburger.addEventListener('click', (e) => {
+            e.stopPropagation();
+            dropdownMenu.classList.toggle('open');
+        });
+        document.addEventListener('click', () => dropdownMenu.classList.remove('open'));
+
+        function initReels() {
+            const rs = symbols[state.currentRoom];
+            for (let i = 1; i <= 3; i++) {
+                const reel = document.getElementById(`reel${i}`); reel.innerHTML = '';
+                for (let j = 0; j < 20; j++) {
+                    const sym = document.createElement('div'); sym.className = 'symbol';
+                    sym.textContent = rs[Math.floor(Math.random() * rs.length)]; reel.appendChild(sym);
+                }
+            }
+        }
+
+        function updateBetButtons() {
+            const config = roomConfig[state.currentRoom];
+            betButtonsEl.innerHTML = '';
+            
+            config.betOptions.forEach(amt => {
+                const btn = document.createElement('button');
+                btn.className = 'bet-quick-btn';
+                btn.textContent = amt >= 1000 ? (amt/1000) + 'K' : amt;
+                btn.onclick = () => setBet(amt);
+                betButtonsEl.appendChild(btn);
+            });
+            
+            // Show custom input only for high roller
+            customBetRow.style.display = state.currentRoom === 'highroller' ? 'flex' : 'none';
+            
+            updateBetButtonHighlight();
+        }
+
+        function updateBetButtonHighlight() {
+            document.querySelectorAll('.bet-quick-btn').forEach(btn => {
+                const btnVal = btn.textContent.includes('K') ? parseInt(btn.textContent) * 1000 : parseInt(btn.textContent);
+                btn.classList.toggle('active', btnVal === state.bet);
+            });
+        }
+
+        function setBet(amount) {
+            const config = roomConfig[state.currentRoom];
+            const max = config.maxBet === Infinity ? state.balance : config.maxBet;
+            state.bet = Math.max(1, Math.min(amount, max, state.balance));
+            betInput.value = state.bet; updateBetButtonHighlight(); saveState();
+        }
+
+        function updateUI() {
+            balanceEl.textContent = state.balance.toLocaleString(); betInput.value = state.bet;
+            roomNameEl.textContent = roomConfig[state.currentRoom].name;
+            document.querySelectorAll('.room-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.room === state.currentRoom));
+            document.body.className = `room-${state.currentRoom}`;
+            const config = roomConfig[state.currentRoom];
+            betInput.max = config.maxBet === Infinity ? state.balance : config.maxBet; betInput.min = 1;
+            
+            // Update paylines indicator
+            const paylinesText = config.paylines === 1 ? '1 Payline (Middle)' : 
+                                 config.paylines === 3 ? '3 Paylines (Top, Mid, Bot)' : 
+                                 '5 Paylines (Rows + Diagonals)';
+            document.getElementById('paylinesIndicator').textContent = paylinesText;
+            
+            updateBetButtonHighlight();
+        }
+
+        function setReelResult(idx, syms) {
+            const reel = document.getElementById(`reel${idx}`);
+            for (let i = 0; i < 3; i++) reel.children[i].textContent = syms[i];
+            reel.style.transform = 'translateY(0)';
+        }
+
+        let spinSoundInterval = null;
+
+        async function spin(skipAnim = false) {
+            if (state.spinning) { state.skipAnimation = true; return; }
+            initAudio();
+            const config = roomConfig[state.currentRoom];
+            if (state.bet > state.balance) { showMessage("Not enough trav bucks!"); return; }
+            if (state.bet < 1) { state.bet = 1; betInput.value = state.bet; }
+            if (config.maxBet !== Infinity && state.bet > config.maxBet) { state.bet = config.maxBet; betInput.value = state.bet; }
+
+            state.spinning = true; state.skipAnimation = skipAnim;
+            state.balance -= state.bet; state.stats.totalSpins++; state.stats.totalLost += state.bet;
+            updateUI(); saveState();
+
+            lever.classList.add('pulled'); playSound('lever'); setTimeout(() => lever.classList.remove('pulled'), 300);
+            document.querySelectorAll('.payline-highlight').forEach(el => el.classList.remove('active'));
+            messageEl.className = 'message';
+
+            const rs = symbols[state.currentRoom], results = [];
+            for (let i = 0; i < 3; i++) { const reelSyms = []; for (let j = 0; j < 3; j++) reelSyms.push(rs[Math.floor(Math.random() * rs.length)]); results.push(reelSyms); }
+
+            const reels = [document.getElementById('reel1'), document.getElementById('reel2'), document.getElementById('reel3')];
+
+            if (!state.skipAnimation) {
+                reels.forEach(r => r.classList.add('spinning'));
+                spinSoundInterval = setInterval(() => playSound('spin'), 80);
+                for (let i = 0; i < 3; i++) {
+                    await new Promise(res => {
+                        const delay = state.skipAnimation ? 50 : 500 + (i * 400);
+                        setTimeout(() => { reels[i].classList.remove('spinning'); setReelResult(i + 1, results[i]); playSound('stop'); res(); }, delay);
+                    });
+                    if (state.skipAnimation) break;
+                }
+                clearInterval(spinSoundInterval);
+            }
+
+            if (state.skipAnimation) {
+                clearInterval(spinSoundInterval);
+                reels.forEach(r => r.classList.remove('spinning'));
+                for (let i = 0; i < 3; i++) setReelResult(i + 1, results[i]);
+                playSound('stop');
+            }
+
+            const winResult = calculateWin(results, config);
+            if (winResult.totalWin > 0) {
+                state.balance += winResult.totalWin; state.stats.totalWins++; state.stats.totalWon += winResult.totalWin;
+                if (winResult.totalWin > state.stats.biggestWin) state.stats.biggestWin = winResult.totalWin;
+                winResult.winningLines.forEach(line => document.querySelectorAll(`.payline-highlight[data-line="${line}"]`).forEach(el => el.classList.add('active')));
+                const ratio = winResult.totalWin / state.bet;
+                if (winResult.isJackpot) { showMessage(`🎰 JACKPOT! +${winResult.totalWin.toLocaleString()}! 🎰`, 'jackpot'); playSound('jackpot'); createParticles(50); }
+                else if (ratio >= 10) { showMessage(`🔥 BIG WIN! +${winResult.totalWin.toLocaleString()}!`, 'big-win'); playSound('bigwin'); createParticles(30); }
+                else if (ratio >= 5) { showMessage(`✨ Nice! +${winResult.totalWin.toLocaleString()}!`, 'big-win'); playSound('win'); createParticles(15); }
+                else { showMessage(`+${winResult.totalWin.toLocaleString()}!`); playSound('coin'); }
+            } else { showMessage(''); }
+
+            updateUI(); saveState();
+            if (state.balance <= 0) setTimeout(() => gameOverOverlay.classList.add('active'), 500);
+            state.spinning = false; state.skipAnimation = false;
+        }
+
+        function calculateWin(results, config) {
+            let totalWin = 0, winningLines = [], isJackpot = false;
+            
+            // Define all possible paylines
+            const allPaylines = [
+                [[0,1],[1,1],[2,1]], // Middle (index 0) - always active
+                [[0,0],[1,0],[2,0]], // Top (index 1)
+                [[0,2],[1,2],[2,2]], // Bottom (index 2)
+                [[0,0],[1,1],[2,2]], // Diagonal TL-BR (index 3)
+                [[0,2],[1,1],[2,0]]  // Diagonal BL-TR (index 4)
+            ];
+            
+            // Only use paylines based on room config
+            const activePaylines = allPaylines.slice(0, config.paylines);
+            
+            // Check each active payline for actual matches
+            activePaylines.forEach((line, idx) => {
+                const sym1 = results[line[0][0]][line[0][1]];
+                const sym2 = results[line[1][0]][line[1][1]];
+                const sym3 = results[line[2][0]][line[2][1]];
+                
+                if (sym1 === sym2 && sym2 === sym3) {
+                    // Three of a kind!
+                    const mult = config.multipliers.three[0] + Math.random() * (config.multipliers.three[1] - config.multipliers.three[0]);
+                    totalWin += Math.floor(state.bet * mult);
+                    winningLines.push(idx);
+                    
+                    // Check for jackpot (three of the first/special symbol on middle line)
+                    if (idx === 0 && sym1 === symbols[state.currentRoom][0]) {
+                        isJackpot = true;
+                        totalWin = state.bet * config.multipliers.jackpot; // Jackpot overrides
+                    }
+                } else if (sym1 === sym2) {
+                    // Two of a kind (first two)
+                    const mult = config.multipliers.two[0] + Math.random() * (config.multipliers.two[1] - config.multipliers.two[0]);
+                    totalWin += Math.floor(state.bet * mult);
+                    winningLines.push(idx);
+                }
+            });
+            
+            // Map to display lines (0=top, 1=middle, 2=bottom)
+            const displayLines = winningLines.map(l => l === 0 ? 1 : l === 1 ? 0 : l === 2 ? 2 : 1);
+            return { totalWin, winningLines: [...new Set(displayLines)], isJackpot };
+        }
+
+        function showMessage(text, type = '') { messageEl.textContent = text; messageEl.className = 'message ' + type; }
+
+        function createParticles(count) {
+            const colors = ['#ff0', '#f0f', '#0ff', '#f00', '#0f0', '#00f'];
+            for (let i = 0; i < count; i++) {
+                const p = document.createElement('div'); p.className = 'particle';
+                p.style.left = Math.random() * 100 + 'vw'; p.style.top = '-20px';
+                p.style.background = colors[Math.floor(Math.random() * colors.length)];
+                p.style.animationDelay = Math.random() * 0.5 + 's'; p.style.animationDuration = (1.5 + Math.random()) + 's';
+                particlesEl.appendChild(p); setTimeout(() => p.remove(), 3000);
+            }
+        }
+
+        function changeRoom(room) {
+            if (state.spinning) return;
+            state.currentRoom = room;
+            const config = roomConfig[room];
+            state.bet = Math.min(state.bet, config.maxBet === Infinity ? state.balance : config.maxBet);
+            state.bet = Math.max(state.bet, config.betOptions[0]);
+            // Snap to nearest bet option if not in high roller
+            if (room !== 'highroller') {
+                const closest = config.betOptions.reduce((prev, curr) => Math.abs(curr - state.bet) < Math.abs(prev - state.bet) ? curr : prev);
+                state.bet = closest;
+            }
+            initReels(); updateBetButtons(); updateUI(); saveState(); showMessage('');
+        }
+
+        function getOwnedCount(itemId) {
+            return state.collection[itemId] || 0;
+        }
+
+        let selectedItem = null;
+
+        function openShop() { document.getElementById('shopOverlay').classList.add('active'); renderShop('all'); }
+        
+        function renderShop(cat) {
+            const container = document.getElementById('shopItems'); container.innerHTML = '';
+            document.querySelectorAll('.category-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.category === cat));
+            const items = cat === 'all' ? shopItems : shopItems.filter(i => i.category === cat);
+            items.forEach(item => {
+                const owned = getOwnedCount(item.id);
+                const isUniqueOwned = !item.stackable && owned > 0;
+                const div = document.createElement('div');
+                div.className = 'shop-item' + (isUniqueOwned ? ' unique-owned' : '');
+                
+                let priceText = isUniqueOwned ? '✓ Owned' : formatPrice(item.price);
+                let ownedText = owned > 0 && item.stackable ? `<div class="shop-item-owned">Owned: ${owned}</div>` : '';
+                
+                div.innerHTML = `<div class="shop-item-icon">${item.icon}</div><div class="shop-item-name">${item.name}</div><div class="shop-item-price">${priceText}</div>${ownedText}`;
+                
+                if (!isUniqueOwned) {
+                    div.onclick = () => openPurchaseModal(item);
+                }
+                container.appendChild(div);
+            });
+        }
+        
+        function formatPrice(p) { if (p >= 1e9) return (p/1e9).toFixed(1)+'B'; if (p >= 1e6) return (p/1e6).toFixed(1)+'M'; if (p >= 1e3) return (p/1e3).toFixed(1)+'K'; return p.toString(); }
+        
+        function openPurchaseModal(item) {
+            selectedItem = item;
+            const owned = getOwnedCount(item.id);
+            
+            document.getElementById('purchaseTitle').textContent = item.name;
+            document.getElementById('purchaseIcon').textContent = item.icon;
+            document.getElementById('purchasePrice').textContent = `Price: ${formatPrice(item.price)} trav bucks`;
+            
+            if (owned > 0 && item.stackable) {
+                document.getElementById('purchaseOwned').textContent = `You already own ${owned} of these`;
+                document.getElementById('purchaseOwned').style.display = 'block';
+            } else {
+                document.getElementById('purchaseOwned').style.display = 'none';
+            }
+            
+            if (state.balance < item.price) {
+                document.getElementById('purchaseDesc').textContent = `You don't have enough trav bucks!`;
+                document.getElementById('purchaseDesc').style.color = '#f44';
+                document.getElementById('confirmPurchaseBtn').style.display = 'none';
+            } else {
+                document.getElementById('purchaseDesc').textContent = `Your balance: ${state.balance.toLocaleString()}`;
+                document.getElementById('purchaseDesc').style.color = '#888';
+                document.getElementById('confirmPurchaseBtn').style.display = 'inline-block';
+            }
+            
+            document.getElementById('purchaseModal').classList.add('active');
+        }
+        
+        function closePurchaseModal() {
+            document.getElementById('purchaseModal').classList.remove('active');
+            selectedItem = null;
+        }
+        
+        function confirmPurchase() {
+            if (!selectedItem || state.balance < selectedItem.price) return;
+            
+            initAudio();
+            state.balance -= selectedItem.price;
+            state.collection[selectedItem.id] = (state.collection[selectedItem.id] || 0) + 1;
+            playSound('purchase');
+            updateUI();
+            saveState();
+            closePurchaseModal();
+            renderShop(document.querySelector('.category-btn.active').dataset.category);
+        }
+        
+        document.getElementById('confirmPurchaseBtn').addEventListener('click', confirmPurchase);
+        document.getElementById('cancelPurchaseBtn').addEventListener('click', closePurchaseModal);
+        
+        function openCollection() { document.getElementById('collectionOverlay').classList.add('active'); renderCollection(); }
+        
+        function renderCollection() {
+            const container = document.getElementById('collectionGrid'), countEl = document.getElementById('collectionCount');
+            const totalItems = Object.values(state.collection).reduce((a, b) => a + b, 0);
+            const uniqueItems = Object.keys(state.collection).length;
+            countEl.textContent = `${totalItems} items collected (${uniqueItems} unique)`;
+            
+            if (uniqueItems === 0) {
+                container.innerHTML = '<div class="empty-collection">No items yet. Visit the shop to start your collection!</div>';
+                return;
+            }
+            container.innerHTML = '';
+            Object.entries(state.collection).forEach(([id, count]) => {
+                const item = shopItems.find(i => i.id === id);
+                if (item && count > 0) {
+                    const div = document.createElement('div');
+                    div.className = 'collection-item';
+                    div.innerHTML = `<div class="collection-item-icon">${item.icon}</div><div class="collection-item-name">${item.name}</div>${count > 1 ? `<div class="collection-item-count">×${count}</div>` : ''}`;
+                    container.appendChild(div);
+                }
+            });
+        }
+        
+        function openStats() { document.getElementById('statsOverlay').classList.add('active'); renderStats(); }
+        
+        function renderStats() {
+            const container = document.getElementById('statsGrid');
+            const t = Math.floor((Date.now() - state.stats.startTime) / 1000);
+            const h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), s = t % 60;
+            const timeStr = h > 0 ? `${h}h ${m}m` : m > 0 ? `${m}m ${s}s` : `${s}s`;
+            const wr = state.stats.totalSpins > 0 ? ((state.stats.totalWins / state.stats.totalSpins) * 100).toFixed(1) : 0;
+            const net = state.stats.totalWon - state.stats.totalLost;
+            const stats = [
+                { label: 'Total Spins', value: state.stats.totalSpins.toLocaleString() },
+                { label: 'Total Wins', value: state.stats.totalWins.toLocaleString() },
+                { label: 'Win Rate', value: wr + '%' },
+                { label: 'Biggest Win', value: state.stats.biggestWin.toLocaleString() },
+                { label: 'Total Won', value: state.stats.totalWon.toLocaleString() },
+                { label: 'Total Lost', value: state.stats.totalLost.toLocaleString() },
+                { label: 'Net Profit', value: (net >= 0 ? '+' : '') + net.toLocaleString() },
+                { label: 'Time Played', value: timeStr }
+            ];
+            container.innerHTML = stats.map(s => `<div class="stat-card"><div class="stat-value">${s.value}</div><div class="stat-label">${s.label}</div></div>`).join('');
+        }
+        
+        function closeOverlay(id) { document.getElementById(id).classList.remove('active'); }
+
+        function secretBonus() {
+            initAudio(); state.balance += 10; playSound('secret');
+            balanceAddEl.textContent = '+10'; balanceAddEl.classList.remove('show');
+            void balanceAddEl.offsetWidth; balanceAddEl.classList.add('show');
+            updateUI(); saveState();
+        }
+
+        lever.addEventListener('click', () => spin());
+        let lastSpinTime = 0;
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' && !document.querySelector('.overlay.active:not(#gameOverOverlay)')) {
+                e.preventDefault();
+                const now = Date.now(), skip = (now - lastSpinTime) < 300; lastSpinTime = now; spin(skip);
+            }
+            if (e.key === '9') secretBonus();
+        });
+        
+        betInput.addEventListener('change', () => {
+            if (state.currentRoom !== 'highroller') return;
+            let val = parseInt(betInput.value) || 1;
+            state.bet = Math.max(1, Math.min(val, state.balance));
+            betInput.value = state.bet;
+            updateBetButtonHighlight(); saveState();
+        });
+        
+        document.querySelectorAll('.room-btn').forEach(btn => btn.addEventListener('click', () => changeRoom(btn.dataset.room)));
+        document.getElementById('restartBtn').addEventListener('click', () => { state.balance = 100; state.bet = 1; gameOverOverlay.classList.remove('active'); updateUI(); saveState(); });
+        
+        // Reset button - open modal
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            document.getElementById('resetModal').classList.add('active');
+        });
+        
+        // Confirm reset
+        document.getElementById('confirmResetBtn').addEventListener('click', () => {
+            // Clear localStorage
+            localStorage.removeItem('windsorCasino_v1');
+            
+            // Reset state completely
+            state.balance = 100;
+            state.bet = 1;
+            state.currentRoom = 'easy';
+            state.collection = {};
+            state.stats = { totalSpins: 0, totalWins: 0, biggestWin: 0, totalWon: 0, totalLost: 0, startTime: Date.now() };
+            state.spinning = false;
+            state.skipAnimation = false;
+            selectedItem = null;
+            
+            // Close all overlays
+            document.querySelectorAll('.overlay').forEach(el => el.classList.remove('active'));
+            
+            // Reinitialize UI
+            initReels();
+            updateBetButtons();
+            updateUI();
+            saveState();
+            showMessage('Game Reset!');
+        });
+        
+        // Cancel reset
+        document.getElementById('cancelResetBtn').addEventListener('click', () => {
+            document.getElementById('resetModal').classList.remove('active');
+        });
+        
+        // Odds display
+        function openOdds() {
+            const config = roomConfig[state.currentRoom];
+            document.getElementById('oddsRoomName').textContent = config.name;
+            
+            // With 10 symbols per reel:
+            // 2-match chance = 1/10 = 10% per line
+            // 3-match chance = 1/10 * 1/10 = 1% per line
+            // Jackpot = 3-match with specific symbol = 0.1% per line
+            const numSymbols = 10;
+            const twoMatchPerLine = (1/numSymbols * 100).toFixed(0);
+            const threeMatchPerLine = (1/(numSymbols*numSymbols) * 100).toFixed(1);
+            const jackpotPerLine = (1/(numSymbols*numSymbols*numSymbols) * 100).toFixed(2);
+            
+            const paylinesText = config.paylines === 1 ? '1 (Middle only)' : 
+                                 config.paylines === 3 ? '3 (Top, Mid, Bot)' : 
+                                 '5 (Rows + Diagonals)';
+            
+            document.getElementById('oddsContent').innerHTML = `
+                <table class="odds-table">
+                    <tr>
+                        <th>Outcome</th>
+                        <th>Chance/Line</th>
+                        <th>Payout</th>
+                    </tr>
+                    <tr>
+                        <td>🎰 JACKPOT (3x first symbol)</td>
+                        <td class="odds-highlight">${jackpotPerLine}%</td>
+                        <td>${config.multipliers.jackpot}x bet</td>
+                    </tr>
+                    <tr>
+                        <td>Three of a Kind</td>
+                        <td>${threeMatchPerLine}%</td>
+                        <td>${config.multipliers.three[0]}x - ${config.multipliers.three[1]}x</td>
+                    </tr>
+                    <tr>
+                        <td>Two of a Kind</td>
+                        <td>${twoMatchPerLine}%</td>
+                        <td>${config.multipliers.two[0]}x - ${config.multipliers.two[1]}x</td>
+                    </tr>
+                </table>
+                <p style="color:#888; font-size:0.85rem; margin-top:20px; text-align:center;">
+                    Active Paylines: <span style="color:#ffd700">${paylinesText}</span><br>
+                    Max Bet: ${config.maxBet === Infinity ? 'Unlimited' : config.maxBet}
+                </p>
+                <p style="color:#666; font-size:0.75rem; margin-top:10px; text-align:center;">
+                    More paylines = more chances to win per spin<br>
+                    10 symbols per reel • Wins based on actual matches
+                </p>
+            `;
+            
+            document.getElementById('oddsOverlay').classList.add('active');
+        }
+        
+        document.getElementById('oddsBtn').addEventListener('click', () => { dropdownMenu.classList.remove('open'); openOdds(); });
+        document.getElementById('shopBtn').addEventListener('click', () => { dropdownMenu.classList.remove('open'); openShop(); });
+        document.getElementById('collectionBtn').addEventListener('click', () => { dropdownMenu.classList.remove('open'); openCollection(); });
+        document.getElementById('statsBtn').addEventListener('click', () => { dropdownMenu.classList.remove('open'); openStats(); });
+        document.querySelectorAll('.category-btn').forEach(btn => btn.addEventListener('click', () => renderShop(btn.dataset.category)));
+        let lastLeverClick = 0;
+        lever.addEventListener('click', () => { const now = Date.now(); if (now - lastLeverClick < 300) state.skipAnimation = true; lastLeverClick = now; });
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { document.querySelectorAll('.overlay:not(#gameOverOverlay)').forEach(el => el.classList.remove('active')); selectedItem = null; } });
+
+        loadState(); initReels(); updateBetButtons(); updateUI();
+    </script>
+</body>
+</html>
